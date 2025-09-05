@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Open Hi-Hat with Tone.js</title>
+  <script src="https://unpkg.com/tone@14.8.39/build/Tone.js"></script>
+</head>
+<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+  <h1>Open Hi-Hat Synth (Tone.js)</h1>
+  <div style="display:flex;gap:1em;">
+    <button id="start" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Start Hi-Hat Loop</button>
+    <button id="stop" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Stop Hi-Hat Loop</button>
+  </div>
+
+  <script>
+    // Set the BPM to 140
+    Tone.Transport.bpm.value = 140;
+
+    // Open hi-hat noise synth with exponential attack/decay only
+    const openHiHat = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: {
+        attack: 0.01,
+        decay: 0.4,
+        sustain: 0,
+        release: 0,
+        attackCurve: "exponential",
+        decayCurve: "exponential"
+      },
+    });
+
+    // Metallic FM oscillator with identical envelope
+    const metallicOsc = new Tone.FMSynth({
+      harmonicity: 5.0,
+      modulationIndex: 20,
+      oscillator: { type: "square" },
+      envelope: {
+        attack: 0.01,
+        decay: 0.4,
+        sustain: 0,
+        release: 0,
+        attackCurve: "exponential",
+        decayCurve: "exponential"
+      },
+      modulation: { type: "square" },
+      modulationEnvelope: {
+        attack: 0.01,
+        decay: 0.4,
+        sustain: 0,
+        release: 0,
+        attackCurve: "exponential",
+        decayCurve: "exponential"
+      }
+    });
+
+    // Highpass filter to shape tone
+    const hpFilter = new Tone.Filter({
+      type: "highpass",
+      frequency: 6000,
+      Q: 1,
+    }).toDestination();
+
+    // Connect both noise and FM oscillator to filter
+    openHiHat.connect(hpFilter);
+    metallicOsc.connect(hpFilter);
+
+    // Function to trigger open hi-hat
+    function triggerOpenHiHat(time = Tone.now()) {
+      openHiHat.triggerAttackRelease("16n", time);
+      metallicOsc.triggerAttackRelease("16n", "C6", time);
+    }
+
+    // Play an open hi-hat on every 2nd beat
+    Tone.Transport.scheduleRepeat((time) => {
+      triggerOpenHiHat(time);
+    }, "2n");
+
+    // Start button
+    document.querySelector("#start").addEventListener("click", async () => {
+      await Tone.start();
+      Tone.Transport.start();
+      console.log("Tone.js started, hi-hat loop playing at 140 BPM!");
+    });
+
+    // Stop button
+    document.querySelector("#stop").addEventListener("click", () => {
+      Tone.Transport.stop();
+      openHiHat.triggerRelease();
+      metallicOsc.triggerRelease();
+      console.log("Hi-hat loop stopped.");
+    });
+  </script>
+</body>
+</html>
