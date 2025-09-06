@@ -1,109 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Open Hi-Hat with Tone.js</title>
-  <script src="https://unpkg.com/tone@14.8.39/build/Tone.js"></script>
+  <meta charset="UTF-8">
+  <title>FM Hi-Hat Playground</title>
+  <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .controls {
+      margin-top: 20px;
+    }
+    .control-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: inline-block;
+      width: 160px;
+    }
+    input[type=range] {
+      width: 200px;
+    }
+  </style>
 </head>
-<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
-  <h1>Open Hi-Hat Synth (Tone.js)</h1>
-  <div style="display:flex;gap:1em;flex-wrap:wrap;justify-content:center;">
-    <button id="start" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Start Hi-Hat Loop</button>
-    <button id="stop" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Stop Hi-Hat Loop</button>
-    <button id="muteNoise" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Mute Noise</button>
-    <button id="unmuteNoise" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Unmute Noise</button>
-    <button id="muteFM" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Mute FM</button>
-    <button id="unmuteFM" style="padding:1em 2em;font-size:1.2em;cursor:pointer;">Unmute FM</button>
+<body>
+  <h1>FM Hi-Hat Playground</h1>
+  <button id="startBtn">Start Hi-Hat Loop</button>
+  <button id="stopBtn">Stop Hi-Hat Loop</button>
+  <button id="noteC6">Set Note: C6</button>
+  <button id="noteC7">Set Note: C7</button>
+
+  <div class="controls">
+    <h2>Synth Parameters</h2>
+
+    <div class="control-group">
+      <label for="volume">Volume:</label>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.5">
+      <span id="volumeVal">0.5</span>
+    </div>
+
+    <div class="control-group">
+      <label for="harmonicity">Harmonicity:</label>
+      <input id="harmonicity" type="range" min="0.1" max="10" step="0.1" value="8">
+      <span id="harmonicityVal">8</span>
+    </div>
+
+    <div class="control-group">
+      <label for="modIndex">Modulation Index:</label>
+      <input id="modIndex" type="range" min="0" max="50" step="1" value="32">
+      <span id="modIndexVal">32</span>
+    </div>
+
+    <h3>Carrier Envelope</h3>
+    <div class="control-group">
+      <label for="carrierAttack">Attack:</label>
+      <input id="carrierAttack" type="range" min="0.001" max="0.5" step="0.001" value="0.001">
+      <span id="carrierAttackVal">0.001</span>
+    </div>
+    <div class="control-group">
+      <label for="carrierDecay">Decay:</label>
+      <input id="carrierDecay" type="range" min="0.05" max="2" step="0.001" value="0.249">
+      <span id="carrierDecayVal">0.249</span>
+    </div>
+
+    <h3>Modulation Envelope</h3>
+    <div class="control-group">
+      <label for="modAttack">Attack:</label>
+      <input id="modAttack" type="range" min="0.001" max="0.5" step="0.001" value="0.001">
+      <span id="modAttackVal">0.001</span>
+    </div>
+    <div class="control-group">
+      <label for="modDecay">Decay:</label>
+      <input id="modDecay" type="range" min="0.05" max="2" step="0.001" value="0.249">
+      <span id="modDecayVal">0.249</span>
+    </div>
   </div>
 
   <script>
-    Tone.Transport.bpm.value = 140;
+    // Default note is now C7
+    let currentNote = "C7";
 
-    // Open hi-hat noise synth
-    const openHiHat = new Tone.NoiseSynth({
-      noise: { type: "white" },
-      envelope: {
-        attack: 0.01,
-        decay: 0.4,
-        sustain: 0,
-        release: 0,
-        attackCurve: "exponential",
-        decayCurve: "exponential"
-      },
-    });
-
-    // Metallic FM oscillator
-    const metallicOsc = new Tone.FMSynth({
-      harmonicity: 5.0,
-      modulationIndex: 20,
+    // Create FM synth with updated defaults
+    const metallicFM = new Tone.FMSynth({
+      harmonicity: 8,
+      modulationIndex: 32,
       oscillator: { type: "square" },
       envelope: {
-        attack: 0.01,
-        decay: 0.4,
+        attack: 0.001,
+        decay: 0.249,
         sustain: 0,
-        release: 0,
-        attackCurve: "exponential",
-        decayCurve: "exponential"
+        release: 0
       },
       modulation: { type: "square" },
       modulationEnvelope: {
-        attack: 0.01,
-        decay: 0.4,
+        attack: 0.001,
+        decay: 0.249,
         sustain: 0,
-        release: 0,
-        attackCurve: "exponential",
-        decayCurve: "exponential"
+        release: 0
       }
     });
 
-    // Highpass filter to shape tone
+    // Gain node for amplitude control
+    const gainNode = new Tone.Gain(0.5);
+
+    // High-pass filter
     const hpFilter = new Tone.Filter({
       type: "highpass",
       frequency: 6000,
-      Q: 1,
+      Q: 1
     }).toDestination();
 
-    // Connect synths to filter
-    openHiHat.connect(hpFilter);
-    metallicOsc.connect(hpFilter);
+    // Signal chain: FM synth -> gain -> filter -> output
+    metallicFM.connect(gainNode);
+    gainNode.connect(hpFilter);
 
-    // Keep track of mute state
-    let noiseMuted = false;
-    let fmMuted = false;
-
-    // Function to trigger open hi-hat
-    function triggerOpenHiHat(time = Tone.now()) {
-      if (!noiseMuted) openHiHat.triggerAttackRelease("16n", time);
-      if (!fmMuted) metallicOsc.triggerAttackRelease("16n", "C6", time);
+    // Trigger hi-hat
+    function triggerHiHat(time) {
+      metallicFM.triggerAttackRelease(currentNote, "16n", time);
     }
 
-    // Play open hi-hat only on upbeats (the "&")
-    Tone.Transport.scheduleRepeat((time) => {
-      triggerOpenHiHat(time);
-    }, "4n", "8n");
-
-    // Start / Stop buttons
-    document.querySelector("#start").addEventListener("click", async () => {
+    // Start Transport
+    document.getElementById("startBtn").addEventListener("click", async () => {
       await Tone.start();
+      console.log("Audio started");
+
+      Tone.Transport.scheduleRepeat((time) => {
+        triggerHiHat(time);
+      }, "4n");
+
       Tone.Transport.start();
-      console.log("Hi-hat loop started at 140 BPM!");
     });
 
-    document.querySelector("#stop").addEventListener("click", () => {
+    // Stop Transport
+    document.getElementById("stopBtn").addEventListener("click", () => {
       Tone.Transport.stop();
-      openHiHat.triggerRelease();
-      metallicOsc.triggerRelease();
-      console.log("Hi-hat loop stopped.");
+      Tone.Transport.cancel();
+      console.log("Hi-Hat loop stopped");
     });
 
-    // Mute / Unmute Noise
-    document.querySelector("#muteNoise").addEventListener("click", () => { noiseMuted = true; });
-    document.querySelector("#unmuteNoise").addEventListener("click", () => { noiseMuted = false; });
+    // Note buttons
+    document.getElementById("noteC6").addEventListener("click", () => {
+      currentNote = "C6";
+    });
+    document.getElementById("noteC7").addEventListener("click", () => {
+      currentNote = "C7";
+    });
 
-    // Mute / Unmute FM
-    document.querySelector("#muteFM").addEventListener("click", () => { fmMuted = true; });
-    document.querySelector("#unmuteFM").addEventListener("click", () => { fmMuted = false; });
+    // Sliders
+    document.getElementById("volume").addEventListener("input", (e) => {
+      gainNode.gain.value = parseFloat(e.target.value);
+      document.getElementById("volumeVal").textContent = e.target.value;
+    });
+
+    document.getElementById("harmonicity").addEventListener("input", (e) => {
+      metallicFM.harmonicity.value = parseFloat(e.target.value);
+      document.getElementById("harmonicityVal").textContent = e.target.value;
+    });
+
+    document.getElementById("modIndex").addEventListener("input", (e) => {
+      metallicFM.modulationIndex.value = parseFloat(e.target.value);
+      document.getElementById("modIndexVal").textContent = e.target.value;
+    });
+
+    document.getElementById("carrierAttack").addEventListener("input", (e) => {
+      metallicFM.envelope.attack = parseFloat(e.target.value);
+      document.getElementById("carrierAttackVal").textContent = e.target.value;
+    });
+
+    document.getElementById("carrierDecay").addEventListener("input", (e) => {
+      metallicFM.envelope.decay = parseFloat(e.target.value);
+      document.getElementById("carrierDecayVal").textContent = e.target.value;
+    });
+
+    document.getElementById("modAttack").addEventListener("input", (e) => {
+      metallicFM.modulationEnvelope.attack = parseFloat(e.target.value);
+      document.getElementById("modAttackVal").textContent = e.target.value;
+    });
+
+    document.getElementById("modDecay").addEventListener("input", (e) => {
+      metallicFM.modulationEnvelope.decay = parseFloat(e.target.value);
+      document.getElementById("modDecayVal").textContent = e.target.value;
+    });
   </script>
 </body>
 </html>
